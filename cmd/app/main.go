@@ -12,6 +12,6 @@ func main() {
 
 	s, err := app.NewApiServer(cfg)
 	if err = s.Start(); err != nil {
-		log.Fatal("failed to raise the server", err)
+		log.Fatal("не удалось подключиться к серверу", err)
 	}
 }

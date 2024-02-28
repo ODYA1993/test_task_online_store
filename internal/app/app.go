@@ -52,10 +52,10 @@ func (a *ApiServer) InitDB() error {
 func (a *ApiServer) Start() error {
 	a.configureRouter()
 
-	log.Printf("Starting the server on the port: %s:\n", a.config.PortAddr)
+	log.Printf("Запуск сервера на порту: %s:\n", a.config.PortAddr)
 
 	if err := http.ListenAndServe(":"+a.config.PortAddr, a.router); err != nil {
-		return fmt.Errorf("failed to start server: %w", err)
+		return fmt.Errorf("не удалось запустить сервер: %w", err)
 	}
 
 	return nil
