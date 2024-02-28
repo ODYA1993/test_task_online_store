@@ -1,0 +1,9 @@
+port_addr: "8080"
+env: "local"
+storage:
+  user: "postgres"
+  password: "postgres"
+  host: "localhost"
+  port: "5433"
+  dbname: "postgres"
+  sslmode: "disable"
