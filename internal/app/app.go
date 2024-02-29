@@ -3,25 +3,24 @@ package app
 import (
 	"context"
 	"fmt"
-	"log"
-	"net/http"
-	config2 "online_store/internal/config"
-	"sort"
-	"strings"
-
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"log"
+	"net/http"
+	"online_store/internal/config"
 	"online_store/internal/models"
+	"sort"
+	"strings"
 )
 
 type ApiServer struct {
-	config       *config2.Config
+	config       *config.Config
 	router       chi.Router
 	db           *pgxpool.Pool
 	queryContext context.Context
 }
 
-func NewApiServer(config *config2.Config) (*ApiServer, error) {
+func NewApiServer(config *config.Config) (*ApiServer, error) {
 	apiServer := &ApiServer{
 		config: config,
 		router: chi.NewRouter(),
@@ -37,7 +36,8 @@ func NewApiServer(config *config2.Config) (*ApiServer, error) {
 }
 
 func (a *ApiServer) InitDB() error {
-	connConfig, err := pgxpool.ParseConfig(fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+	connConfig, err := pgxpool.ParseConfig(fmt.Sprintf(
+		"host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 		a.config.Host, a.config.Port, a.config.User, a.config.Password, a.config.DBName))
 	if err != nil {
 		return fmt.Errorf("failed to parse database config: %w", err)
@@ -112,22 +112,22 @@ func (a *ApiServer) gettingOrderBuilds(ctx context.Context, orderNumbers []strin
 
 	query := `
 SELECT
-  o.id AS order_id,
-  o.id AS order_item_id,
-  i.id AS item_id,
-  i.name AS item_name,
-  o.quantity,
-  s.id AS shelf_id,
-  s.name AS shelf_name,
-  o.additional_shelf
+ o.id AS order_id,
+ o.id AS order_item_id,
+ i.id AS item_id,
+ i.name AS item_name,
+ o.quantity,
+ s.id AS shelf_id,
+ s.name AS shelf_name,
+ o.additional_shelf
 FROM
-  orders o
-  JOIN items i ON o.item_id = i.id
-  LEFT JOIN shelves s ON o.main_shelf_id = s.id
+ orders o
+ JOIN items i ON o.item_id = i.id
+ LEFT JOIN shelves s ON o.main_shelf_id = s.id
 WHERE
-  o.id IN (` + strings.Join(placeholders, ", ") + `)
+ o.id IN (` + strings.Join(placeholders, ", ") + `)
 ORDER BY
-  s.name, o.id, i.name
+ s.name, o.id, i.name
 `
 
 	args := make([]interface{}, len(orderNumbers))
@@ -143,11 +143,20 @@ ORDER BY
 
 	var orders []models.Order
 	var currentShelfOrders []models.Order
+
 	for rows.Next() {
 		var order models.Order
 		var item models.Item
 		var shelf models.Shelf
-		if err := rows.Scan(&order.OrderID, &order.ID, &item.ID, &item.Name, &order.Quantity, &shelf.ID, &shelf.Name, &order.AdditionalShelf); err != nil {
+		if err := rows.Scan(
+			&order.OrderID,
+			&order.ID,
+			&item.ID,
+			&item.Name,
+			&order.Quantity,
+			&shelf.ID,
+			&shelf.Name,
+			&order.AdditionalShelf); err != nil {
 			return nil, err
 		}
 
@@ -166,6 +175,7 @@ ORDER BY
 				break
 			}
 		}
+
 		currentShelfOrders = append(currentShelfOrders, order)
 		sort.Slice(currentShelfOrders, func(i, j int) bool {
 			return currentShelfOrders[i].ID < currentShelfOrders[j].ID
