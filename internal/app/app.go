@@ -3,24 +3,25 @@ package app
 import (
 	"context"
 	"fmt"
-	"github.com/go-chi/chi/v5"
-	"github.com/jmoiron/sqlx"
-	_ "github.com/lib/pq"
 	"log"
 	"net/http"
-	"online_store/internal/models"
+	config2 "online_store/internal/config"
 	"sort"
 	"strings"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v4/pgxpool"
+	"online_store/internal/models"
 )
 
 type ApiServer struct {
-	config       *Config
+	config       *config2.Config
 	router       chi.Router
-	db           *sqlx.DB
+	db           *pgxpool.Pool
 	queryContext context.Context
 }
 
-func NewApiServer(config *Config) (*ApiServer, error) {
+func NewApiServer(config *config2.Config) (*ApiServer, error) {
 	apiServer := &ApiServer{
 		config: config,
 		router: chi.NewRouter(),
@@ -36,15 +37,18 @@ func NewApiServer(config *Config) (*ApiServer, error) {
 }
 
 func (a *ApiServer) InitDB() error {
-	db, err := sqlx.ConnectContext(context.Background(), "postgres", fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
+	connConfig, err := pgxpool.ParseConfig(fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable",
 		a.config.Host, a.config.Port, a.config.User, a.config.Password, a.config.DBName))
+	if err != nil {
+		return fmt.Errorf("failed to parse database config: %w", err)
+	}
+
+	db, err := pgxpool.ConnectConfig(context.Background(), connConfig)
 	if err != nil {
 		return fmt.Errorf("failed to open database: %w", err)
 	}
 
 	a.db = db
-	a.db.SetMaxOpenConns(10)
-	a.db.SetMaxIdleConns(5)
 
 	return nil
 }
@@ -76,7 +80,7 @@ func (a *ApiServer) GetOrder(w http.ResponseWriter, r *http.Request) {
 
 	fmt.Fprintf(w, "Страница сборки заказов %s\n\n", orderNumbers)
 
-	orders, err := a.gettingOrderBuilds(orderNumbersList)
+	orders, err := a.gettingOrderBuilds(a.queryContext, orderNumbersList)
 	if err != nil {
 		http.Error(w, fmt.Sprintf("не удалось получить заказы: %v", err), http.StatusInternalServerError)
 		return
@@ -100,7 +104,7 @@ func (a *ApiServer) GetOrder(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (a *ApiServer) gettingOrderBuilds(orderNumbers []string) ([]models.Order, error) {
+func (a *ApiServer) gettingOrderBuilds(ctx context.Context, orderNumbers []string) ([]models.Order, error) {
 	placeholders := make([]string, len(orderNumbers))
 	for i := range orderNumbers {
 		placeholders[i] = fmt.Sprintf("$%d", i+1)
@@ -126,12 +130,12 @@ ORDER BY
   s.name, o.id, i.name
 `
 
-	values := make([]interface{}, len(orderNumbers))
+	args := make([]interface{}, len(orderNumbers))
 	for i, orderNumber := range orderNumbers {
-		values[i] = orderNumber
+		args[i] = orderNumber
 	}
 
-	rows, err := a.db.QueryContext(a.queryContext, query, values...)
+	rows, err := a.db.Query(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -143,16 +147,7 @@ ORDER BY
 		var order models.Order
 		var item models.Item
 		var shelf models.Shelf
-		if err := rows.Scan(
-			&order.OrderID,
-			&order.ID,
-			&item.ID,
-			&item.Name,
-			&order.Quantity,
-			&shelf.ID,
-			&shelf.Name,
-			&order.AdditionalShelf,
-		); err != nil {
+		if err := rows.Scan(&order.OrderID, &order.ID, &item.ID, &item.Name, &order.Quantity, &shelf.ID, &shelf.Name, &order.AdditionalShelf); err != nil {
 			return nil, err
 		}
 

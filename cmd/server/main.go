@@ -4,11 +4,12 @@ import (
 	_ "github.com/lib/pq"
 	"log"
 	"online_store/internal/app"
+	"online_store/internal/config"
 )
 
 func main() {
 
-	cfg := app.GetConfig()
+	cfg := config.GetConfig()
 
 	s, err := app.NewApiServer(cfg)
 	if err = s.Start(); err != nil {
