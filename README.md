@@ -1,6 +1,8 @@
 1- Написать в консоль "make up"
 2- Запустить проект
-3- Перейти по ссылке "localhost:8080/order?order_numbers=10,11,14,15" через Postman!
+3- Перейти по ссылке "localhost:8080/order?order_numbers=10,11,14,15" через Postman!,
+либо в консоль "curl http://localhost:8080/order?order_numbers=10,11,14,15"
+
 Вывод:
       Страница сборки заказов 10,11,14,15
 
